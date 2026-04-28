@@ -20,7 +20,6 @@
 
 | File | Touched in task | Type |
 |---|---|---|
-| `frontend/vite.config.js` | 1 | modify |
 | `backend/routes/airoutes.js` | 2 | modify |
 | `backend/routes/analyticsroutes.js` | 2 | modify |
 | `backend/services/aiService.js` | 3, 4 | modify |
@@ -34,7 +33,7 @@
 
 ## Tasks at a glance
 
-1. Pin the port (vite proxy → `:5000`)
+1. Verify port alignment (no code change — backend `.env` has `PORT=3001`, vite proxy already matches)
 2. Fix case-sensitive route imports
 3. Remove leaked logs in `aiService.js`
 4. Reconcile category enums (single source of truth)
@@ -44,31 +43,25 @@
 8. Deeper `/api/health` (db connectivity)
 9. Write top-level `README.md`
 
-Each task ends with a commit, so by the end of Phase 0 there will be 9 new commits on `main`.
+Tasks 2-9 each end with a commit, so by the end of Phase 0 there will be 8 new commits on `main` (Task 1 is verification-only and has no commit).
 
 ---
 
-## Task 1: Pin the port (fix dev/prod parity)
+## Task 1: Verify port alignment (no code change)
 
-**Bug:** Backend defaults to `:5000` (`server.js:23`), Vite dev proxy targets `:3001` (`frontend/vite.config.js:11`). API calls don't reach the backend in dev.
+**Original assumption:** Backend defaults to `:5000` (`server.js:23` says `process.env.PORT || 5000`) while Vite dev proxy targets `:3001`.
 
-**Decision:** Standardize on `:5000`. Reason: AWS App Runner uses `process.env.PORT` (already wired), and any dev-only port choice is fine — `:5000` is the existing default.
+**Reality discovered during execution:** Ayush's `backend/.env` already sets `PORT=3001`, so the running backend listens on `:3001`, which already matches the Vite proxy. **No mismatch existed; no code change is needed.**
 
-**Files:**
-- Modify: `frontend/vite.config.js:11`
+**Decision:** Standardize on `:3001` for dev (it's already what works locally). Production will inject its own `PORT` via App Runner. All commands and example configs in the rest of this plan use `:3001`.
 
-- [ ] **Step 1: Update Vite proxy target**
+**Files:** none changed.
 
-In `frontend/vite.config.js`, change:
+- [ ] **Step 1: Verify both services agree on `:3001`**
 
-```js
-target: 'http://localhost:3001',
-```
-
-to:
-
-```js
-target: 'http://localhost:5000',
+```bash
+grep -E '^PORT=' backend/.env       # expect: PORT=3001
+grep "target:" frontend/vite.config.js   # expect: target: 'http://localhost:3001',
 ```
 
 - [ ] **Step 2: Verify dev works end-to-end**
@@ -78,7 +71,7 @@ Manual verification (Ayush runs locally):
 ```bash
 # Terminal 1
 cd backend && npm run dev
-# expect: "Connected to MongoDB" and "Server running on port 5000"
+# expect: "Connected to MongoDB" and "Server running on port 3001"
 
 # Terminal 2
 cd frontend && npm run dev
@@ -88,12 +81,9 @@ cd frontend && npm run dev
 # Open DevTools → Network. Try logging in. The /api/auth/login request should return 200/401, NOT a 504/proxy error.
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: No commit**
 
-```bash
-git add frontend/vite.config.js
-git commit -m "fix(dev): align vite proxy with backend port 5000"
-```
+Nothing changed; nothing to commit. Move on to Task 2.
 
 ---
 
@@ -149,7 +139,7 @@ Expected: every imported path matches an actual filename byte-for-byte.
 
 ```bash
 cd backend && npm run dev
-# expect: "Connected to MongoDB" and "Server running on port 5000"
+# expect: "Connected to MongoDB" and "Server running on port 3001"
 # (Crash with "Cannot find module" means a remaining mismatch.)
 ```
 
@@ -320,7 +310,7 @@ Manual:
 
 ```bash
 TOKEN="<paste a valid access token>"
-curl -X POST http://localhost:5000/api/transactions \
+curl -X POST http://localhost:3001/api/transactions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"type":"expense","amount":10,"category":"Other","date":"2026-04-28"}'
@@ -412,7 +402,7 @@ git commit -m "chore(gitignore): tighten ignore rules for logs, coverage, editor
 
 ```env
 # ===== Core =====
-PORT=5000
+PORT=3001
 FRONTEND_URL=http://localhost:5173
 
 # ===== Database =====
@@ -506,7 +496,7 @@ cd backend && npm run dev
 In another terminal:
 
 ```bash
-curl -i http://localhost:5000/api/health
+curl -i http://localhost:3001/api/health
 ```
 
 Expected:
@@ -569,7 +559,7 @@ app.get('/api/health', (req, res) => {
 - [ ] **Step 2: Verify the happy path**
 
 ```bash
-curl -i http://localhost:5000/api/health
+curl -i http://localhost:3001/api/health
 ```
 
 Expected: HTTP `200`, body like `{"status":"ok","db":"connected","uptime":12}`.
@@ -579,7 +569,7 @@ Expected: HTTP `200`, body like `{"status":"ok","db":"connected","uptime":12}`.
 In a separate terminal, while the backend is running, temporarily kill / disconnect Mongo (easiest: stop your local mongod, or set `MONGODB_URI` to an invalid host and restart). Then:
 
 ```bash
-curl -i http://localhost:5000/api/health
+curl -i http://localhost:3001/api/health
 ```
 
 Expected: HTTP `503`, body `{"status":"degraded","db":"disconnected", ...}`. Restore Mongo afterward.
@@ -654,7 +644,7 @@ Open http://localhost:5173 — the Vite dev server proxies `/api` to the backend
 ### Health check
 
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:3001/api/health
 # {"status":"ok","db":"connected","uptime":3}
 ```
 
@@ -727,7 +717,7 @@ cp backend/.env.example backend/.env
 npm run dev
 ```
 
-Expected: backend says "Connected to MongoDB" and "Server running on port 5000"; frontend serves at `:5173`. Cleanup: `rm -rf /tmp/aift-test` after.
+Expected: backend says "Connected to MongoDB" and "Server running on port 3001"; frontend serves at `:5173`. Cleanup: `rm -rf /tmp/aift-test` after.
 
 - [ ] **Step 3: Commit**
 
@@ -742,12 +732,12 @@ git commit -m "docs: add top-level README with stack, quickstart, and roadmap po
 
 Before pushing, run a quick smoke check:
 
-- [ ] `git log --oneline -10` shows 9 new commits, all attributed to `Ayush Jain <ayushjain21.nmims@gmail.com>`.
+- [ ] `git log --oneline -10` shows 8 new commits, all attributed to `Ayush Jain <ayushjain21.nmims@gmail.com>`.
 - [ ] `cd backend && npm run dev` starts cleanly (no warnings about missing modules).
 - [ ] `cd frontend && npm run dev` starts cleanly and the app loads at `:5173`.
 - [ ] You can log in, view the dashboard, add a transaction with the "AI" categorize button, and the category lands in the model without a 500.
-- [ ] `curl -i http://localhost:5000/api/health` returns `200` with `db: "connected"`.
-- [ ] `curl -I http://localhost:5000/api/health | grep -i x-content-type-options` shows the helmet header is present.
+- [ ] `curl -i http://localhost:3001/api/health` returns `200` with `db: "connected"`.
+- [ ] `curl -I http://localhost:3001/api/health | grep -i x-content-type-options` shows the helmet header is present.
 - [ ] `git ls-files -i --exclude-standard` returns nothing (no committed files match the new ignore rules).
 
 Once green, push:
