@@ -377,10 +377,10 @@ backend/uploads/*
 - [ ] **Step 2: Verify nothing currently tracked is now ignored**
 
 ```bash
-git ls-files -i --exclude-standard
+git ls-files -ic --exclude-standard
 ```
 
-Expected: empty output. (If anything prints, it means a file matches a new ignore rule but was previously committed — investigate before continuing.)
+Expected: empty output. (If anything prints, it means a file matches a new ignore rule but was previously committed — investigate before continuing.) Note: the `-i` flag requires either `-c` (cached/tracked) or `-o` (other/untracked) — `-c` is what we want here.
 
 - [ ] **Step 3: Commit**
 
@@ -738,7 +738,7 @@ Before pushing, run a quick smoke check:
 - [ ] You can log in, view the dashboard, add a transaction with the "AI" categorize button, and the category lands in the model without a 500.
 - [ ] `curl -i http://localhost:3001/api/health` returns `200` with `db: "connected"`.
 - [ ] `curl -I http://localhost:3001/api/health | grep -i x-content-type-options` shows the helmet header is present.
-- [ ] `git ls-files -i --exclude-standard` returns nothing (no committed files match the new ignore rules).
+- [ ] `git ls-files -ic --exclude-standard` returns nothing (no committed files match the new ignore rules).
 
 Once green, push:
 
