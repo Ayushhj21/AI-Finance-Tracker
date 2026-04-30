@@ -1,6 +1,8 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cron from 'node-cron';
@@ -23,6 +25,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+
+// Security headers — must run before any response is sent
+app.use(helmet());
+
+// Request logging — concise format in dev, Apache-style in prod
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true
