@@ -55,7 +55,7 @@ export const categorizeTransaction = async (description, amount) => {
 Description: "${description}"
 Amount: $${amount}
 
-Choose ONE category from: Food & Drinks, Transportation, Shopping, Entertainment, Bills & Utilities, Healthcare, Education, Travel, Groceries, Rent, Insurance, Salary, Freelance, Investment, Gift, Other Expense, Other Income
+Choose ONE category from: Food & Drinks, Transportation, Shopping, Entertainment, Bills & Utilities, Healthcare, Education, Travel, Groceries, Rent, Insurance, Personal Care, Other Expense, Salary, Freelance, Investment, Gift, Other Income
 
 Return ONLY the category name, nothing else.`;
 

@@ -9,7 +9,7 @@ const CATEGORIES = {
   expense: [
     'Food & Drinks', 'Transportation', 'Shopping', 'Entertainment',
     'Bills & Utilities', 'Healthcare', 'Education', 'Travel',
-    'Groceries', 'Rent', 'Insurance', 'Other Expense'
+    'Groceries', 'Rent', 'Insurance', 'Personal Care', 'Other Expense'
   ],
   income: ['Salary', 'Freelance', 'Investment', 'Gift', 'Other Income']
 };

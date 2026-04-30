@@ -20,11 +20,13 @@ const transactionSchema = new mongoose.Schema({
     category: {
         type: String,
         required: [true, "Category is required"],
-        enum:[
-            //Expense categories
-            'Food & Drinks', 'Transportation', 'Shopping', 'Entertainment', 'Health & Fitness', 'Education', 'Bills & Utilities', 'Travel', 'Groceries', 'Personal Care','Insurance', 'Other',
-            //Income categories
-            'Salary', 'Investments', 'Gifts', 'Freelance', 'Other'
+        enum: [
+            // Expense categories
+            'Food & Drinks', 'Transportation', 'Shopping', 'Entertainment',
+            'Bills & Utilities', 'Healthcare', 'Education', 'Travel',
+            'Groceries', 'Rent', 'Insurance', 'Personal Care', 'Other Expense',
+            // Income categories
+            'Salary', 'Freelance', 'Investment', 'Gift', 'Other Income'
         ]
     },
     description:{
