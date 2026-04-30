@@ -1,8 +1,11 @@
 // AI Service using Gemini REST API directly
+
+import dotenv from 'dotenv';
+dotenv.config();
 const apiKey = process.env.GEMINI_API_KEY;
 
 
-const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 // Helper function to call Gemini API
 async function callGeminiAPI(prompt) {
@@ -20,14 +23,13 @@ async function callGeminiAPI(prompt) {
         })
     });
 
-    console.log("Gemini API response status:", response);
+    console.log("Gemini API response status:", response.status);
     if (!response.ok) {
         const error = await response.text();
         throw new Error(`Gemini API error: ${response.status} - ${error}`);
     }
 
     const data = await response.json();
-    console.log(data);
     return data.candidates[0].content.parts[0].text;
 }
 
