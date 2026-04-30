@@ -5,7 +5,7 @@ import {
   aiPredictExpenses,
   aiGenerateSummary,
   aiSavingsRecommendations
-} from '../controllers/aicontroller.js';
+} from '../controllers/aiController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();

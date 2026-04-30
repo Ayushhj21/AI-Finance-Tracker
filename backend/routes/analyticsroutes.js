@@ -5,7 +5,7 @@ import {
   getCategoryAnalysis,
   getCashflow,
   getSpendingPatterns
-} from '../controllers/analyticscontroller.js';
+} from '../controllers/analyticsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
