@@ -49,9 +49,22 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Health check
+// Health check — used by load balancers and uptime monitors
+const dbStateLabel = (s) => ({
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+})[s] || 'unknown';
+
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', message: 'Server is running' });
+    const dbState = mongoose.connection.readyState;
+    const healthy = dbState === 1;
+    res.status(healthy ? 200 : 503).json({
+        status: healthy ? 'ok' : 'degraded',
+        db: dbStateLabel(dbState),
+        uptime: Math.round(process.uptime())
+    });
 });
 
 // Cron jobs
