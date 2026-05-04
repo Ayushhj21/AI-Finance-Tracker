@@ -22,6 +22,10 @@ import { checkBudgetAlerts } from './services/notificationService.js';
 dotenv.config();
 
 const app = express();
+
+// Behind Render/Vercel/App Runner load balancer — trust X-Forwarded-* headers from one hop
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 5000;
 
 // Middleware
