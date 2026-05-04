@@ -1,0 +1,25 @@
+# Don't ship node_modules — they get installed fresh in the build stage
+node_modules
+npm-debug.log
+
+# Secrets must come from env vars, not the image
+.env
+.env.local
+.env.*.local
+
+# Repo metadata not needed at runtime
+.git
+.gitignore
+
+# Local uploads — receipts are user-generated and should not be baked into the image
+uploads/*
+!uploads/.gitkeep
+
+# Editor / OS junk
+.DS_Store
+.idea
+.vscode
+
+# Docs (not needed at runtime — drop weight)
+README.md
+docs/
