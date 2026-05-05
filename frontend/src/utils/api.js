@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 //this will create http requests to backend
+// In dev, leave VITE_API_URL unset and the Vite proxy handles forwarding /api -> backend.
+// In prod, Vercel provides VITE_API_URL=https://<your-backend>.onrender.com/api
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -60,7 +62,10 @@ api.interceptors.response.use(
 
         console.log("  Refresh Token:", refreshToken.substring(0, 20) + "...");
         console.log("  Sending refresh request to /api/auth/refresh");
-        const response = await axios.post('/api/auth/refresh', { refreshToken });
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
+          { refreshToken }
+        );
         
         console.log("  Refresh successful!");
         const { accessToken, refreshToken: newRefreshToken } = response.data.data;
