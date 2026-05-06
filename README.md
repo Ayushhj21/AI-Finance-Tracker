@@ -2,7 +2,11 @@
 
 A personal finance tracker with AI-powered transaction categorization, monthly summaries, and savings recommendations. Built as a hands-on learning project to level up modern backend infrastructure — deployment, caching, rate limiting, queues, observability — on a real running system.
 
-> **Status:** Phase 0 of 8 — pre-deploy hygiene complete. See [`docs/superpowers/specs/2026-04-28-backend-leveling-up-roadmap-design.md`](docs/superpowers/specs/2026-04-28-backend-leveling-up-roadmap-design.md) for the full roadmap and per-phase plans.
+> **Status:** Phase 1 of 8 — deployed live on free-tier infrastructure.
+>
+> **Live URL:** https://ai-finance-tracker-seven-opal.vercel.app *(Render free tier — first request after 15min idle takes ~30s to wake the backend)*
+>
+> See [`docs/superpowers/specs/2026-04-28-backend-leveling-up-roadmap-design.md`](docs/superpowers/specs/2026-04-28-backend-leveling-up-roadmap-design.md) for the full roadmap and per-phase plans.
 >
 > This is **not a product**. There are no real users and there is no plan to acquire any. The interesting thing here is the deliberate, phased evolution of the backend — each phase teaches a specific cluster of concepts.
 
@@ -99,14 +103,50 @@ npm run client         # frontend only (vite)
 npm run install-all    # install root + backend + frontend deps
 ```
 
+## Deployment
+
+Currently deployed on free-tier infrastructure as part of Phase 1 of the roadmap. AWS App Runner migration is planned for a later phase.
+
+```
+┌──────────────┐         ┌────────────────────────┐
+│   Vercel     │  HTTPS  │  Render free web       │
+│ (React CDN)  │ ──────> │  service (Docker)      │
+│ ai-finance-  │         │  ai-finance-tracker-   │
+│ tracker-     │         │  y1fu.onrender.com     │
+│ seven-opal   │         └───────────┬────────────┘
+└──────────────┘                     │ TLS
+                                     ▼
+                         ┌────────────────────────┐
+                         │  MongoDB Atlas M0      │
+                         │  (free tier shared)    │
+                         └────────────────────────┘
+```
+
+**Service map:**
+
+| Layer | Provider | Tier | Cost |
+|---|---|---|---|
+| Frontend (React build) | Vercel | Hobby | Free |
+| Backend (Express in Docker) | Render | Free Web Service | Free |
+| Database | MongoDB Atlas | M0 Shared | Free |
+| AI | Google Gemini API | Free quota | Free |
+| Receipt storage | Cloudinary | Free tier | Free |
+
+**Known limitations of free tier:**
+- Backend spins down after 15 min idle; cold start ~30s on first request
+- Atlas M0: 512 MB storage, no backups, shared CPU
+- Cloudinary free: 25 GB storage / 25 GB bandwidth per month
+- Atlas IP rule allows `0.0.0.0/0` (acceptable for learning project; flagged for revisit in Phase 7)
+- Gemini 2.5 Flash returns transient `503 UNAVAILABLE` under load; backend silently falls back to `Other Expense` (will be properly surfaced to the user in Phase 2)
+
 ## Roadmap
 
 8-phase plan focused on backend learning. Each phase teaches a specific cluster of concepts and ends with the system in a clean, deployable state.
 
 | Phase | Focus | Status |
 |---|---|---|
-| **0** | Pre-deploy hygiene — port parity, casing, leaked logs, category SSOT, helmet/morgan, deeper health, this README | **In progress** |
-| **1** | Get it live — Docker, S3, MongoDB Atlas, AWS App Runner, custom domain | |
+| **0** | Pre-deploy hygiene — port parity, casing, leaked logs, category SSOT, helmet/morgan, deeper health, README | **Done** |
+| **1** | Get it live — Docker, MongoDB Atlas, Render web service, Vercel (Path B; AWS App Runner / S3 deferred to a future mini-phase) | **Done** |
 | **2** | Backend hardening — refresh token rotation, rate limiting, Zod validation, structured logging (pino), centralized error handling | |
 | **3** | Reliability + perf — Redis cache layer, idempotency keys, Mongo transactions, pagination | |
 | **4** | Async architecture — BullMQ jobs, SES email, optionally Kafka for one event flow | |
