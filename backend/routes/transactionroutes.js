@@ -1,50 +1,49 @@
 import express from 'express';
 import multer from 'multer';
-import{
+import {
     getTransactions,
     getTransaction,
     createTransaction,
     updateTransaction,
     deleteTransaction,
     uploadReceipt
-} from  '../controllers/transactionController.js';
-
-import {protect} from '../middleware/authMiddleware.js';
+} from '../controllers/transactionController.js';
+import { protect } from '../middleware/authMiddleware.js';
+import { validate } from '../middleware/validate.js';
+import {
+    createTransactionSchema,
+    updateTransactionSchema,
+    listTransactionsQuerySchema,
+    idParamSchema
+} from '../schemas/transaction.js';
 
 const router = express.Router();
 
-//configure multer for file uploads
-
+// Configure multer for file uploads
 const upload = multer({
-    dest: 'uploads/', //destination folder for uploaded files
-    limits: {fileSize: 5 * 1024 * 1024}, //limit file size to 5MB
+    dest: 'uploads/',
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        console.log('Uploaded file mime type:', file.mimetype);
-        console.log('Uploaded file name:', file.originalname);
-
         const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
-
-        if(allowedMimeTypes.includes(file.mimetype)){
+        if (allowedMimeTypes.includes(file.mimetype)) {
             return cb(null, true);
-        } else {
-            cb(new Error('Invalid file type. Only JPEG, PNG, WEBP images and PDF files are allowed.'));
         }
+        cb(new Error('Invalid file type. Only JPEG, PNG, WEBP images and PDF files are allowed.'));
     }
 });
 
-//All routes are protected
+// All routes are protected
 router.use(protect);
 
 router.route('/')
-.get(getTransactions)
-.post(createTransaction);
+    .get(validate({ query: listTransactionsQuerySchema }), getTransactions)
+    .post(validate({ body: createTransactionSchema }), createTransaction);
 
 router.route('/:id')
-.get(getTransaction)
-.put(updateTransaction)
-.delete(deleteTransaction);
+    .get(validate({ params: idParamSchema }), getTransaction)
+    .put(validate({ params: idParamSchema, body: updateTransactionSchema }), updateTransaction)
+    .delete(validate({ params: idParamSchema }), deleteTransaction);
 
-
-router.post('/:id/receipt', upload.single('receipt'), uploadReceipt);
+router.post('/:id/receipt', validate({ params: idParamSchema }), upload.single('receipt'), uploadReceipt);
 
 export default router;

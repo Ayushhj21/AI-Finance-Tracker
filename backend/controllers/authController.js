@@ -1,7 +1,7 @@
 import User from '../models/Usermodel.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwtutils.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { Unauthorized, BadRequest, Conflict } from '../utils/errors.js';
+import { Unauthorized, Conflict } from '../utils/errors.js';
 
 // @desc Register a new user
 // @route POST /api/auth/register
@@ -77,8 +77,7 @@ export const login = asyncHandler(async (req, res) => {
 // @access  Public
 export const refreshToken = asyncHandler(async (req, res) => {
     const { refreshToken } = req.body;
-    if (!refreshToken) throw BadRequest('Refresh token is required');
-
+    // Schema guarantees refreshToken is a non-empty string.
     const decoded = verifyRefreshToken(refreshToken);
 
     const user = await User.findById(decoded.userId).select('+refreshToken');

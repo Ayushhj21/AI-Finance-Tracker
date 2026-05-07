@@ -8,15 +8,13 @@ import {
 } from '../services/aiService.js';
 import SavingsGoal from '../models/SavingsGoalmodel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { BadRequest } from '../utils/errors.js';
 
 // @desc    Categorize transaction with AI
 // @route   POST /api/ai/categorize
 // @access  Private
 export const aiCategorize = asyncHandler(async (req, res) => {
     const { description, amount } = req.body;
-    if (!description) throw BadRequest('Description is required');
-
+    // Schema validation guarantees description is non-empty.
     const category = await categorizeTransaction(description, amount);
 
     res.json({

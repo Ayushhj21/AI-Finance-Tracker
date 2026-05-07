@@ -1,6 +1,6 @@
 import SavingsGoal from '../models/SavingsGoalmodel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { NotFound, BadRequest } from '../utils/errors.js';
+import { NotFound } from '../utils/errors.js';
 
 // @desc    Get all savings goals
 // @route   GET /api/savings-goals
@@ -86,8 +86,7 @@ export const updateSavingsGoal = asyncHandler(async (req, res) => {
 // @access  Private
 export const addToSavingsGoal = asyncHandler(async (req, res) => {
     const { amount } = req.body;
-    if (!amount || amount <= 0) throw BadRequest('Please provide a valid amount');
-
+    // Schema guarantees amount is a positive number.
     const goal = await SavingsGoal.findOne({
         _id: req.params.id,
         user: req.user._id

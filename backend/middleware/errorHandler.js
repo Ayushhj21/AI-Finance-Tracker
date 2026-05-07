@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
+import { ZodError } from 'zod';
 import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
@@ -11,6 +12,13 @@ export const errorHandler = (err, req, res, next) => {
 
     if (err instanceof AppError) {
         appErr = err;
+    } else if (err instanceof ZodError) {
+        // Field-level errors flattened to "path: message; path: message"
+        appErr = new AppError(
+            err.issues.map(i => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; '),
+            400,
+            'VALIDATION_ERROR'
+        );
     } else if (err instanceof mongoose.Error.ValidationError) {
         appErr = new AppError(
             Object.values(err.errors).map(e => e.message).join('; '),
