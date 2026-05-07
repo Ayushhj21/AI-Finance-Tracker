@@ -2,10 +2,11 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
+import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cron from 'node-cron';
+import { logger } from './utils/logger.js';
 
 // Import routes
 import authRoutes from './routes/authroutes.js';
@@ -33,8 +34,25 @@ const PORT = process.env.PORT || 5000;
 // Security headers — must run before any response is sent
 app.use(helmet());
 
-// Request logging — concise format in dev, Apache-style in prod
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+// Structured request logging using our pino logger directly.
+// Attaches a per-request child logger and logs once on response 'finish'.
+app.use((req, res, next) => {
+    req.id = req.headers['x-request-id'] || randomUUID();
+    req.log = logger.child({ reqId: req.id });
+    res.setHeader('X-Request-ID', req.id);
+
+    const start = Date.now();
+    res.on('finish', () => {
+        const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+        req.log[level]({
+            method: req.method,
+            url: req.url,
+            statusCode: res.statusCode,
+            responseTime: Date.now() - start
+        }, `${req.method} ${req.url} ${res.statusCode}`);
+    });
+    next();
+});
 
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',

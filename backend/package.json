@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "nodemon server.js | pino-pretty",
     "start": "node server.js"
   },
   "keywords": [],
@@ -21,9 +21,12 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.3.0",
-    "morgan": "^1.10.1",
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.1.3"
   }
 }

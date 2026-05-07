@@ -1,6 +1,7 @@
 // AI Service using Gemini REST API directly
 
 import dotenv from 'dotenv';
+import { logger } from '../utils/logger.js';
 dotenv.config();
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -23,7 +24,7 @@ async function callGeminiAPI(prompt) {
         })
     });
 
-    console.log("Gemini API response status:", response.status);
+    logger.info({ status: response.status }, 'gemini call complete');
     if (!response.ok) {
         const error = await response.text();
         throw new Error(`Gemini API error: ${response.status} - ${error}`);
@@ -43,7 +44,7 @@ export const generateAIInsight = async (prompt, context) => {
         const text = await callGeminiAPI(fullPrompt);
         return text;
     } catch (error) {
-        console.error('Gemini API error:', error);
+        logger.error({ err: error }, 'gemini insight generation failed');
         throw new Error('Failed to generate AI insight');
     }
 };
@@ -62,7 +63,7 @@ Return ONLY the category name, nothing else.`;
         const text = await callGeminiAPI(prompt);
         return text.trim();
     } catch (error) {
-        console.error('Categorization error:', error);
+        logger.error({ err: error }, 'gemini categorization failed; falling back to Other Expense');
         return 'Other Expense';
     }
 };
@@ -83,7 +84,7 @@ export const explainSpendingChange = async (currentData, previousData) => {
 
         return await generateAIInsight(prompt, context);
     } catch (error) {
-        console.error('Spending explanation error:', error);
+        logger.error({ err: error }, 'spending explanation failed');
         throw error;
     }
 };
@@ -95,7 +96,7 @@ export const predictExpenses = async (historicalData) => {
 
         return await generateAIInsight(prompt, historicalData);
     } catch (error) {
-        console.error('Expense prediction error:', error);
+        logger.error({ err: error }, 'expense prediction failed');
         throw error;
     }
 };
@@ -110,7 +111,7 @@ export const generateFinancialSummary = async (data) => {
 
         return await generateAIInsight(prompt, data);
     } catch (error) {
-        console.error('Summary generation error:', error);
+        logger.error({ err: error }, 'summary generation failed');
         throw error;
     }
 };
@@ -128,7 +129,7 @@ export const getSavingsRecommendations = async (income, expenses, goals) => {
 
         return await generateAIInsight(prompt, context);
     } catch (error) {
-        console.error('Savings recommendations error:', error);
+        logger.error({ err: error }, 'savings recommendations failed');
         throw error;
     }
 };
