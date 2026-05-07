@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cron from 'node-cron';
 import { logger } from './utils/logger.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 // Import routes
 import authRoutes from './routes/authroutes.js';
@@ -109,11 +110,5 @@ mongoose.connect(process.env.MONGODB_URI)
         process.exit(1);
     });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(err.statusCode || 500).json({
-        success: false,
-        message: err.message || 'Internal Server Error'
-    });
-});
+// Global error handler — must be the last app.use(). Recognized by 4-arg signature.
+app.use(errorHandler);
