@@ -46,7 +46,12 @@ api.interceptors.response.use(
     console.log("  URL:", originalRequest?.method?.toUpperCase(), originalRequest?.url);
     console.log("  Status:", error.response?.status);
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Skip the refresh-and-redirect dance for auth endpoints — their 401s mean
+    // "wrong credentials / bad refresh token", not "your session expired".
+    // Letting those bubble up to the page lets toast.error('...') actually render.
+    if (error.response?.status === 401
+        && !originalRequest._retry
+        && !originalRequest.url?.includes('/auth/')) {
       console.log(" 401 Unauthorized - Attempting token refresh...");
       originalRequest._retry = true;
 
