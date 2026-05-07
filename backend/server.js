@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import cron from 'node-cron';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { Forbidden } from './utils/errors.js';
 
 // Import routes
 import authRoutes from './routes/authroutes.js';
@@ -55,12 +56,28 @@ app.use((req, res, next) => {
     next();
 });
 
+// CORS allowlist — accepts a comma-separated list of origins.
+// Falls back to FRONTEND_URL (single origin) for backward compat,
+// and finally to localhost:5173 for local dev.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, cb) => {
+        // Allow tools with no Origin header (curl, server-to-server, healthchecks)
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+        return cb(Forbidden(`Origin ${origin} not in allowlist`));
+    },
     credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Explicit body size caps (Express default is 100kb but being explicit is documentation).
+// Receipt uploads go through multer with its own 5MB limit, not these parsers.
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
 
 // Routes

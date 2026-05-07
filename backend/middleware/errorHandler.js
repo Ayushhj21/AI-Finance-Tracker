@@ -33,6 +33,10 @@ export const errorHandler = (err, req, res, next) => {
         appErr = new AppError('Resource already exists', 409, 'CONFLICT');
     } else if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
         appErr = new AppError('Invalid or expired token', 401, 'UNAUTHORIZED');
+    } else if (typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 500) {
+        // Express ecosystem errors (body-parser PayloadTooLargeError, multer errors, etc.)
+        // expose .statusCode and .message; surface them rather than treating as 500.
+        appErr = new AppError(err.message || 'Bad request', err.statusCode, err.code || 'BAD_REQUEST');
     } else {
         // Unknown / programmer error — hide the message in prod to avoid leaking internals
         appErr = new AppError(
