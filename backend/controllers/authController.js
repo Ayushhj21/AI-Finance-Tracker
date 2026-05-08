@@ -20,8 +20,8 @@ export const register = asyncHandler(async (req, res) => {
     });
 
     const accessToken = generateAccessToken(user._id);
-    const refreshToken = generateRefreshToken(user._id);
-    user.refreshToken = refreshToken;
+    const { token: refreshToken, jti } = generateRefreshToken(user._id);
+    user.refreshTokenJti = jti;
     await user.save();
 
     res.status(201).json({
@@ -53,8 +53,8 @@ export const login = asyncHandler(async (req, res) => {
     if (!isPasswordValid) throw Unauthorized('Invalid email or password');
 
     const accessToken = generateAccessToken(user._id);
-    const refreshToken = generateRefreshToken(user._id);
-    user.refreshToken = refreshToken;
+    const { token: refreshToken, jti } = generateRefreshToken(user._id);
+    user.refreshTokenJti = jti;
     await user.save();
 
     res.json({
@@ -72,23 +72,35 @@ export const login = asyncHandler(async (req, res) => {
     });
 });
 
-// @desc    Refresh access token
+// @desc    Refresh access token (with rotation + replay detection)
 // @route   POST /api/auth/refresh
 // @access  Public
 export const refreshToken = asyncHandler(async (req, res) => {
     const { refreshToken } = req.body;
     // Schema guarantees refreshToken is a non-empty string.
+
+    // verifyRefreshToken throws on signature/expiry failures → mapped to 401 by errorHandler.
     const decoded = verifyRefreshToken(refreshToken);
 
-    const user = await User.findById(decoded.userId).select('+refreshToken');
-    if (!user || user.refreshToken !== refreshToken) {
-        throw Unauthorized('Invalid refresh token');
+    const user = await User.findById(decoded.userId).select('+refreshTokenJti');
+    if (!user) throw Unauthorized('Invalid refresh token');
+
+    // Rotation check: the incoming token's jti must match the user's currently-active jti.
+    // Mismatch = either we already rotated (an old refresh token is being reused) or the
+    // user's refreshTokenJti was cleared (logout). Either way: replay-style failure.
+    if (!user.refreshTokenJti || user.refreshTokenJti !== decoded.jti) {
+        // Defensive: clear the stored jti so any other in-flight uses also fail.
+        if (user.refreshTokenJti) {
+            user.refreshTokenJti = null;
+            await user.save();
+        }
+        throw Unauthorized('Refresh token replay detected; please log in again');
     }
 
+    // Rotate: issue a fresh pair and store the new jti.
     const newAccessToken = generateAccessToken(user._id);
-    const newRefreshToken = generateRefreshToken(user._id);
-
-    user.refreshToken = newRefreshToken;
+    const { token: newRefreshToken, jti: newJti } = generateRefreshToken(user._id);
+    user.refreshTokenJti = newJti;
     await user.save();
 
     res.json({
@@ -105,7 +117,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
 // @access  Private
 export const logout = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
-    user.refreshToken = null;
+    user.refreshTokenJti = null;
     await user.save();
 
     res.json({

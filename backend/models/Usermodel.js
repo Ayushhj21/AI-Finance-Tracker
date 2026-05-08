@@ -29,9 +29,13 @@ const userSchema = new mongoose.Schema({
         default: "USD",
         enum: ["USD", "EUR", "GBP", "INR", "JPY", "CNY"]
     },
-    refreshToken: {
+    // Stores ONLY the JTI of the currently-active refresh token, not the token itself.
+    // Phase 2 Task 6: refresh token rotation — every refresh issues a new jti; using
+    // an old refresh token whose jti no longer matches is treated as replay and
+    // invalidates the family (clears this field, forcing a fresh login).
+    refreshTokenJti: {
         type: String,
-        select: false //not selected by default
+        select: false
     },
     googleId: {
         type: String,
