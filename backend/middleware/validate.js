@@ -10,7 +10,12 @@
 export const validate = (schemas) => (req, res, next) => {
     try {
         if (schemas.body) req.body = schemas.body.parse(req.body);
-        if (schemas.query) req.query = schemas.query.parse(req.query);
+        if (schemas.query) {
+            // Express 5 exposes req.query as a read-only getter, so direct assignment
+            // throws TypeError. Redefine the property on this request instance.
+            const parsed = schemas.query.parse(req.query);
+            Object.defineProperty(req, 'query', { value: parsed, writable: true, configurable: true });
+        }
         if (schemas.params) req.params = schemas.params.parse(req.params);
         next();
     } catch (err) {
