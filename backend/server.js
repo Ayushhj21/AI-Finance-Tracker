@@ -10,6 +10,7 @@ import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { Forbidden } from './utils/errors.js';
 import { apiLimiter } from './middleware/rateLimit.js';
+import { csrfProtection } from './middleware/csrf.js';
 
 // Import routes
 import authRoutes from './routes/authroutes.js';
@@ -84,6 +85,10 @@ app.use(cookieParser());
 // General-purpose rate limit on all API routes (100 req / 15min per IP).
 // Stricter limits on /api/auth/* are added inside that router.
 app.use('/api', apiLimiter);
+
+// CSRF double-submit token check on state-changing requests.
+// Must run after cookieParser (needs req.cookies) and before routes.
+app.use(csrfProtection);
 
 // Routes
 app.use('/api/auth', authRoutes);

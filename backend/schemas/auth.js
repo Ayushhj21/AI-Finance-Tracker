@@ -12,6 +12,5 @@ export const loginSchema = z.object({
     password: z.string().min(1)
 });
 
-export const refreshSchema = z.object({
-    refreshToken: z.string().min(1)
-});
+// /refresh no longer takes a body — the refresh token comes from a path-scoped
+// httpOnly cookie. The route therefore has no body schema.

@@ -1,38 +1,26 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/Usermodel.js';
+import { Unauthorized } from '../utils/errors.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
-export const protect = async (req, res, next) => {
+// Access token now travels as an httpOnly cookie. We no longer accept it via
+// the Authorization header — the only way to authenticate is via the cookie
+// the server set on login/register/refresh. Errors are thrown so the central
+// errorHandler shapes them as { success, code, message, requestId }.
+export const protect = asyncHandler(async (req, res, next) => {
+    const token = req.cookies?.accessToken;
+    if (!token) throw Unauthorized('Not authorized, no token');
+
+    let decoded;
     try {
-        let token;
-
-        //check for token in authorization header
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-            token = req.headers.authorization.split(' ')[1];
-        }
-
-        if (!token) {
-            return res.status(401).json({ message: 'Not authorized, no token' });
-        };
-
-        try {
-            //verify access token
-            const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-
-            //get user from token
-            req.user = await User.findById(decoded.userId).select('-password -refreshToken');
-
-            if (!req.user) {
-                return res.status(401).json({
-                    success: false,
-                    message: "User not found"
-                })
-            }
-
-            next();
-        } catch (error) {
-            return res.status(401).json({ success: false, message: "Token is invalid or expired" });
-        }
-    } catch (error) {
-        return res.status(500).json({ success: false, message: "Server error in authentication" });
+        decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    } catch (err) {
+        throw Unauthorized('Token is invalid or expired');
     }
-}
+
+    const user = await User.findById(decoded.userId).select('-password -refreshTokenJti');
+    if (!user) throw Unauthorized('User not found');
+
+    req.user = user;
+    next();
+});

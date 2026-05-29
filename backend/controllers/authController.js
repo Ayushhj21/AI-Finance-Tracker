@@ -1,5 +1,6 @@
 import User from '../models/Usermodel.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwtutils.js';
+import { setAuthCookies, clearAuthCookies, generateCsrfToken } from '../utils/cookies.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { Unauthorized, Conflict } from '../utils/errors.js';
 
@@ -21,8 +22,11 @@ export const register = asyncHandler(async (req, res) => {
 
     const accessToken = generateAccessToken(user._id);
     const { token: refreshToken, jti } = generateRefreshToken(user._id);
+    const csrfToken = generateCsrfToken();
     user.refreshTokenJti = jti;
     await user.save();
+
+    setAuthCookies(res, { accessToken, refreshToken, csrfToken });
 
     res.status(201).json({
         success: true,
@@ -33,9 +37,7 @@ export const register = asyncHandler(async (req, res) => {
                 name: user.name,
                 email: user.email,
                 currency: user.currency
-            },
-            accessToken,
-            refreshToken
+            }
         }
     });
 });
@@ -54,8 +56,11 @@ export const login = asyncHandler(async (req, res) => {
 
     const accessToken = generateAccessToken(user._id);
     const { token: refreshToken, jti } = generateRefreshToken(user._id);
+    const csrfToken = generateCsrfToken();
     user.refreshTokenJti = jti;
     await user.save();
+
+    setAuthCookies(res, { accessToken, refreshToken, csrfToken });
 
     res.json({
         success: true,
@@ -65,22 +70,21 @@ export const login = asyncHandler(async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email
-            },
-            accessToken,
-            refreshToken
+            }
         }
     });
 });
 
 // @desc    Refresh access token (with rotation + replay detection)
 // @route   POST /api/auth/refresh
-// @access  Public
+// @access  Public (refresh token cookie is the credential)
 export const refreshToken = asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body;
-    // Schema guarantees refreshToken is a non-empty string.
+    // Refresh token now arrives as an httpOnly cookie (path-scoped to this endpoint).
+    const incomingToken = req.cookies?.refreshToken;
+    if (!incomingToken) throw Unauthorized('Refresh token missing');
 
     // verifyRefreshToken throws on signature/expiry failures → mapped to 401 by errorHandler.
-    const decoded = verifyRefreshToken(refreshToken);
+    const decoded = verifyRefreshToken(incomingToken);
 
     const user = await User.findById(decoded.userId).select('+refreshTokenJti');
     if (!user) throw Unauthorized('Invalid refresh token');
@@ -94,22 +98,25 @@ export const refreshToken = asyncHandler(async (req, res) => {
             user.refreshTokenJti = null;
             await user.save();
         }
+        clearAuthCookies(res);
         throw Unauthorized('Refresh token replay detected; please log in again');
     }
 
-    // Rotate: issue a fresh pair and store the new jti.
+    // Rotate: issue a fresh pair and store the new jti. Also rotate the CSRF token
+    // so a long-lived session doesn't keep the same one forever.
     const newAccessToken = generateAccessToken(user._id);
     const { token: newRefreshToken, jti: newJti } = generateRefreshToken(user._id);
+    const newCsrfToken = generateCsrfToken();
     user.refreshTokenJti = newJti;
     await user.save();
 
-    res.json({
-        success: true,
-        data: {
-            accessToken: newAccessToken,
-            refreshToken: newRefreshToken
-        }
+    setAuthCookies(res, {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        csrfToken: newCsrfToken
     });
+
+    res.json({ success: true });
 });
 
 // @desc    Logout user
@@ -119,6 +126,8 @@ export const logout = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
     user.refreshTokenJti = null;
     await user.save();
+
+    clearAuthCookies(res);
 
     res.json({
         success: true,
