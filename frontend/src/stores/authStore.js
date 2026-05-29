@@ -1,21 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Tokens no longer live here — they're in httpOnly cookies the server controls.
+// The store only tracks who is logged in for UI gating.
 export const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
-      refreshToken: null,
       isAuthenticated: false,
 
-      setAuth: (user, token, refreshToken) => {
-        set({
-          user,
-          token,
-          refreshToken,
-          isAuthenticated: true
-        });
+      setAuth: (user) => {
+        set({ user, isAuthenticated: true });
       },
 
       updateUser: (userData) => {
@@ -23,25 +18,17 @@ export const useAuthStore = create(
       },
 
       logout: () => {
-        set({
-          user: null,
-          token: null,
-          refreshToken: null,
-          isAuthenticated: false
-        });
+        set({ user: null, isAuthenticated: false });
+        // Nuke any other persisted store state on logout.
         localStorage.clear();
       },
 
-      getUser: () => get().user,
-      getToken: () => get().token,
-      getRefreshToken: () => get().refreshToken
+      getUser: () => get().user
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ //fields which is given here will be stored in the local-storage
+      partialize: (state) => ({
         user: state.user,
-        token: state.token,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated
       })
     }

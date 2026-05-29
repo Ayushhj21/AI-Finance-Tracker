@@ -26,8 +26,7 @@ const Login = () => {
       const response = await authAPI.login(formData);
       
       if (response.success) {
-        const { user, accessToken, refreshToken } = response.data;
-        setAuth(user, accessToken, refreshToken);
+        setAuth(response.data.user);
         toast.success('Login successful!');
         navigate('/dashboard');
       }

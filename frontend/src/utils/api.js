@@ -1,102 +1,73 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
-//this will create http requests to backend
-// In dev, leave VITE_API_URL unset and the Vite proxy handles forwarding /api -> backend.
-// In prod, Vercel provides VITE_API_URL=https://<your-backend>.onrender.com/api
+
+// Auth tokens now live in httpOnly cookies the server sets on login/register/refresh.
+// We never touch them from JS. Three things changed vs the previous Bearer-token flow:
+//   1. withCredentials: true — tells axios to send/receive cookies cross-origin.
+//   2. We no longer attach Authorization headers; the browser sends accessToken
+//      automatically on every API request and refreshToken only on /auth/refresh.
+//   3. On state-changing methods we attach X-CSRF-Token, read from the non-httpOnly
+//      csrfToken cookie. This is the "double-submit" defense — a cross-site
+//      attacker can fire requests but can't read our csrf cookie, so they can't
+//      construct the matching header.
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true
 });
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    console.log(" REQUEST INTERCEPTOR - Outgoing Request");
-    console.log("  URL:", config.method.toUpperCase(), config.baseURL + config.url);
-    const token = useAuthStore.getState().getToken();
-    console.log("  Access Token:", token ? `${token.substring(0, 20)}...` : "NO TOKEN");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-      console.log("  Authorization header added");
-    } else {
-      console.log("  No token available, request will be unauthenticated");
-    }
-    return config;
-  },
-  (error) => {
-    console.error("REQUEST INTERCEPTOR ERROR:", error);
-    return Promise.reject(error);
-  }
-);
+const STATE_CHANGING_METHODS = new Set(['post', 'put', 'patch', 'delete']);
 
-//originalRequest._retry = true; this is used to avoid infinite loops
-// Response interceptor
+const readCsrfCookie = () => {
+  const match = document.cookie.match(/(?:^|;\s*)csrfToken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+api.interceptors.request.use((config) => {
+  if (STATE_CHANGING_METHODS.has(config.method?.toLowerCase())) {
+    const csrf = readCsrfCookie();
+    if (csrf) config.headers['X-CSRF-Token'] = csrf;
+  }
+  return config;
+});
+
+// Coalesce concurrent 401s into a single refresh call. Otherwise every in-flight
+// request races to /auth/refresh and rotation invalidates all but the first.
+let refreshPromise = null;
+
 api.interceptors.response.use(
-  (response) => {
-    console.log("RESPONSE INTERCEPTOR - Success");
-    console.log("  URL:", response.config.method.toUpperCase(), response.config.url);
-    console.log("  Status:", response.status);
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    console.log("RESPONSE INTERCEPTOR - Error Detected");
-    console.log("  URL:", originalRequest?.method?.toUpperCase(), originalRequest?.url);
-    console.log("  Status:", error.response?.status);
 
     // Skip the refresh-and-redirect dance for auth endpoints — their 401s mean
-    // "wrong credentials / bad refresh token", not "your session expired".
-    // Letting those bubble up to the page lets toast.error('...') actually render.
-    if (error.response?.status === 401
-        && !originalRequest._retry
-        && !originalRequest.url?.includes('/auth/')) {
-      console.log(" 401 Unauthorized - Attempting token refresh...");
+    // "wrong credentials / bad refresh token", not "session expired".
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/')
+    ) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = useAuthStore.getState().getRefreshToken();
-        
-        if (!refreshToken) {
-          console.log(" No refresh token available, logging out");
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
-          return Promise.reject(error);
+        refreshPromise ??= axios
+          .post(`${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`, {}, { withCredentials: true })
+          .finally(() => { refreshPromise = null; });
+
+        await refreshPromise;
+        // Server rotated cookies including csrfToken; re-read it for the retried request.
+        if (STATE_CHANGING_METHODS.has(originalRequest.method?.toLowerCase())) {
+          const csrf = readCsrfCookie();
+          if (csrf) originalRequest.headers['X-CSRF-Token'] = csrf;
         }
-
-        console.log("  Refresh Token:", refreshToken.substring(0, 20) + "...");
-        console.log("  Sending refresh request to /api/auth/refresh");
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
-          { refreshToken }
-        );
-        
-        console.log("  Refresh successful!");
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-        console.log("   New Access Token:", accessToken.substring(0, 20) + "...");
-        console.log("   New Refresh Token:", newRefreshToken.substring(0, 20) + "...");
-        
-        useAuthStore.getState().setAuth(
-          useAuthStore.getState().user,
-          accessToken,
-          newRefreshToken
-        );
-        console.log("   Tokens updated in store");
-
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        console.log("   Retrying original request...");
         return api(originalRequest);
       } catch (refreshError) {
-        console.log("   Refresh token failed:", refreshError.response?.data?.message);
-        console.log("   Logging out and redirecting to login");
         useAuthStore.getState().logout();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
 
-    console.log("  Error not handled by interceptor, passing through");
     return Promise.reject(error);
   }
 );

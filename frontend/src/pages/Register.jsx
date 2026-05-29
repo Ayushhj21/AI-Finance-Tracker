@@ -36,8 +36,7 @@ const Register = () => {
       const response = await authAPI.register(registerData);
       
       if (response.success) {
-        const { user, accessToken, refreshToken } = response.data;
-        setAuth(user, accessToken, refreshToken);
+        setAuth(response.data.user);
         toast.success('Registration successful!');
         navigate('/dashboard');
       }

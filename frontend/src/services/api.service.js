@@ -21,8 +21,10 @@ export const authAPI = {
     return response.data;
   },
 
-  refreshToken: async (refreshToken) => {
-    const response = await api.post('/auth/refresh', { refreshToken });
+  refreshToken: async () => {
+    // Refresh token is now a path-scoped httpOnly cookie — the browser sends it
+    // automatically. No body needed.
+    const response = await api.post('/auth/refresh');
     return response.data;
   }
 };
