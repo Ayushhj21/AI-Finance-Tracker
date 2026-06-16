@@ -71,14 +71,14 @@ Total expected commits: ~10-14 (some tasks produce 2 commits — one for infrast
 - Modify: `backend/services/aiService.js` (replace `console.log`/`console.error` with logger calls)
 - Modify: `backend/package.json` (add `pino`, `pino-http`)
 
-- [ ] **Step 1: Install dependencies**
+- [x] **Step 1: Install dependencies**
 
 ```bash
 cd backend
 npm install pino pino-http
 ```
 
-- [ ] **Step 2: Create `backend/utils/logger.js`**
+- [x] **Step 2: Create `backend/utils/logger.js`**
 
 ```js
 import pino from 'pino';
@@ -106,7 +106,7 @@ export const logger = pino({
 });
 ```
 
-- [ ] **Step 3: Install `pino-pretty` as a devDependency for local dev**
+- [x] **Step 3: Install `pino-pretty` as a devDependency for local dev**
 
 ```bash
 npm install --save-dev pino-pretty
@@ -114,7 +114,7 @@ npm install --save-dev pino-pretty
 
 (Production uses raw JSON; local dev gets a colored, human-friendly format.)
 
-- [ ] **Step 4: Wire pino-http in `server.js`**
+- [x] **Step 4: Wire pino-http in `server.js`**
 
 Replace the morgan import + line:
 
@@ -151,7 +151,7 @@ app.use((req, res, next) => {
 });
 ```
 
-- [ ] **Step 5: Replace `console.log` / `console.error` in `aiService.js`**
+- [x] **Step 5: Replace `console.log` / `console.error` in `aiService.js`**
 
 Import logger at the top:
 ```js
@@ -172,7 +172,7 @@ console.error('Categorization error:', error);
 logger.error({ err: error }, 'gemini categorization failed');
 ```
 
-- [ ] **Step 6: Remove the `dotenv` startup banners (optional)**
+- [x] **Step 6: Remove the `dotenv` startup banners (optional)**
 
 Add `quiet: true` to `dotenv.config()` calls if the dotenv-injecting-env tip lines feel noisy:
 
@@ -180,7 +180,7 @@ Add `quiet: true` to `dotenv.config()` calls if the dotenv-injecting-env tip lin
 dotenv.config({ quiet: true });
 ```
 
-- [ ] **Step 7: Verify locally**
+- [x] **Step 7: Verify locally**
 
 Restart backend. Hit `/api/health`. Backend terminal should now print colored, structured logs:
 
@@ -198,7 +198,7 @@ In production (Render), logs will be JSON one-per-line:
 
 `curl -i .../api/health` should now include `X-Request-ID: <uuid>` in the response headers.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add backend/package.json backend/package-lock.json backend/utils/logger.js backend/server.js backend/services/aiService.js
@@ -221,7 +221,7 @@ git commit -m "feat(logging): replace morgan with pino + request IDs"
 - Modify: every controller in `backend/controllers/*.js` (remove try/catch, throw `AppError`, wrap exports)
 - Modify: `backend/server.js` (mount errorHandler last)
 
-- [ ] **Step 1: Create `backend/utils/errors.js`**
+- [x] **Step 1: Create `backend/utils/errors.js`**
 
 ```js
 export class AppError extends Error {
@@ -250,7 +250,7 @@ export const Conflict = (message = 'Conflict') =>
     new AppError(message, 409, 'CONFLICT');
 ```
 
-- [ ] **Step 2: Create `backend/utils/asyncHandler.js`**
+- [x] **Step 2: Create `backend/utils/asyncHandler.js`**
 
 ```js
 // Wraps an async route handler so any thrown error is forwarded to Express's error middleware
@@ -259,7 +259,7 @@ export const asyncHandler = (fn) => (req, res, next) => {
 };
 ```
 
-- [ ] **Step 3: Create `backend/middleware/errorHandler.js`**
+- [x] **Step 3: Create `backend/middleware/errorHandler.js`**
 
 ```js
 import { logger } from '../utils/logger.js';
@@ -302,7 +302,7 @@ export const errorHandler = (err, req, res, next) => {
 };
 ```
 
-- [ ] **Step 4: Refactor one controller as a template — `authController.js`**
+- [x] **Step 4: Refactor one controller as a template — `authController.js`**
 
 Replace the body of `register`, `login`, `refreshToken`, `logout`, `getCurrentUser` with throw-based versions wrapped in `asyncHandler`. Example for `login`:
 
@@ -336,7 +336,7 @@ export const login = asyncHandler(async (req, res) => {
 
 Apply the same shape to all five exports. Notice the absence of `try/catch` and the absence of `res.status(500)` calls — anything thrown lands in `errorHandler`.
 
-- [ ] **Step 5: Repeat for the other 5 controllers**
+- [x] **Step 5: Repeat for the other 5 controllers**
 
 Apply the same refactor to:
 - `transactionController.js` (largest — 6 exports)
@@ -348,7 +348,7 @@ Apply the same refactor to:
 
 Goal: zero `try/catch` blocks (except where genuinely needed for fallback logic, e.g., the AI categorize fallback). All known error paths use `throw NotFound(...)` / `throw BadRequest(...)` / `throw Unauthorized(...)`.
 
-- [ ] **Step 6: Mount the error handler in `server.js`**
+- [x] **Step 6: Mount the error handler in `server.js`**
 
 Just BEFORE the existing `app.use((err, req, res, next) => { ... })` block at the bottom, replace that block with:
 
@@ -359,7 +359,7 @@ app.use(errorHandler);
 
 (Express identifies error middleware by its 4-arg signature, so it MUST be mounted after all routes.)
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 Trigger a known error case. Examples:
 ```bash
@@ -374,7 +374,7 @@ curl -i -s -X POST http://localhost:3001/api/auth/login -H 'content-type: applic
 
 Backend log should show a `warn`-level entry with the same requestId as the response header.
 
-- [ ] **Step 8: Commit (probably 2 commits)**
+- [x] **Step 8: Commit (probably 2 commits)**
 
 Suggested split:
 - One commit for the error infrastructure (`errors.js`, `asyncHandler.js`, `errorHandler.js`, `server.js` wiring)
@@ -392,13 +392,13 @@ Suggested split:
 - Modify: `backend/routes/*.js` (wire `validate(schema)` per route)
 - Modify: controllers that did manual validation (remove the `if (!field)` lines)
 
-- [ ] **Step 1: Install Zod**
+- [x] **Step 1: Install Zod**
 
 ```bash
 cd backend && npm install zod
 ```
 
-- [ ] **Step 2: Create `backend/middleware/validate.js`**
+- [x] **Step 2: Create `backend/middleware/validate.js`**
 
 ```js
 import { ZodError } from 'zod';
@@ -417,7 +417,7 @@ export const validate = (schemas) => (req, res, next) => {
 };
 ```
 
-- [ ] **Step 3: Write schemas — start with auth**
+- [x] **Step 3: Write schemas — start with auth**
 
 `backend/schemas/auth.js`:
 ```js
@@ -440,7 +440,7 @@ export const refreshSchema = z.object({
 });
 ```
 
-- [ ] **Step 4: Write schemas for the other domains**
+- [x] **Step 4: Write schemas for the other domains**
 
 `backend/schemas/transaction.js`:
 ```js
@@ -483,7 +483,7 @@ export const idParamSchema = z.object({
 
 (Define similar for `budget.js`, `savingsGoal.js`, `notification.js`, `ai.js`. Define a shared `categories.js` so the list isn't duplicated yet again.)
 
-- [ ] **Step 5: Wire schemas into routes — example for auth**
+- [x] **Step 5: Wire schemas into routes — example for auth**
 
 `backend/routes/authroutes.js`:
 ```js
@@ -497,11 +497,11 @@ router.post('/refresh', validate({ body: refreshSchema }), refreshToken);
 
 Apply across all 7 route files.
 
-- [ ] **Step 6: Remove now-redundant validation in controllers**
+- [x] **Step 6: Remove now-redundant validation in controllers**
 
 Wherever a controller does `if (!email) return res.status(400)...` for a field the schema already requires, delete it. Schema's job now.
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 ```bash
 # Bad email → 400 VALIDATION_ERROR
@@ -517,7 +517,7 @@ curl -i -s -X POST http://localhost:3001/api/auth/login \
 # expect: 400 with "password: Required" or similar
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add backend/middleware/validate.js backend/schemas backend/routes backend/controllers backend/package.json backend/package-lock.json
@@ -533,7 +533,7 @@ git commit -m "feat(validation): zod schemas at every route boundary"
 **Files:**
 - Modify: `backend/server.js`
 
-- [ ] **Step 1: Tighten CORS to an allowlist**
+- [x] **Step 1: Tighten CORS to an allowlist**
 
 Change:
 ```js
@@ -561,7 +561,7 @@ app.use(cors({
 
 This lets you set `ALLOWED_ORIGINS=https://aift-prod.vercel.app,https://staging.vercel.app` later when you have multiple environments.
 
-- [ ] **Step 2: Body size limits**
+- [x] **Step 2: Body size limits**
 
 Change:
 ```js
@@ -577,7 +577,7 @@ app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 (100kb is generous for any of our actual endpoints. Receipts go through multer with its own limit.)
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 ```bash
 # Bad origin → CORS rejection
@@ -591,7 +591,7 @@ curl -i -s -X POST http://localhost:3001/api/auth/login \
 # expect: 413 Payload Too Large
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/server.js
@@ -608,13 +608,13 @@ git commit -m "feat(security): CORS allowlist (env-driven), 100kb body size limi
 - Create: `backend/middleware/rateLimit.js`
 - Modify: `backend/server.js`, `backend/routes/authroutes.js`
 
-- [ ] **Step 1: Install**
+- [x] **Step 1: Install**
 
 ```bash
 cd backend && npm install express-rate-limit
 ```
 
-- [ ] **Step 2: Create `backend/middleware/rateLimit.js`**
+- [x] **Step 2: Create `backend/middleware/rateLimit.js`**
 
 ```js
 import rateLimit from 'express-rate-limit';
@@ -643,7 +643,7 @@ export const authLimiter = rateLimit({
 });
 ```
 
-- [ ] **Step 3: Apply globally to /api/* and override for auth**
+- [x] **Step 3: Apply globally to /api/* and override for auth**
 
 In `server.js`:
 ```js
@@ -660,7 +660,7 @@ router.post('/register', authLimiter, validate({ body: registerSchema }), regist
 router.post('/refresh', authLimiter, validate({ body: refreshSchema }), refreshToken);
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 for i in {1..10}; do curl -s -o /dev/null -w "%{http_code} " -X POST http://localhost:3001/api/auth/login \
@@ -670,7 +670,7 @@ for i in {1..10}; do curl -s -o /dev/null -w "%{http_code} " -X POST http://loca
 
 > **Phase 3 swap:** rate-limit's default in-memory store is per-process. With multiple Render instances later, throttling would be per-instance. Phase 3's Redis lets us share the counter — at that point we swap `store: new RedisStore(...)`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/package.json backend/package-lock.json backend/middleware/rateLimit.js backend/server.js backend/routes/authroutes.js
@@ -689,7 +689,7 @@ git commit -m "feat(security): rate limiting (general + stricter auth)"
 - Modify: `backend/controllers/authController.js`
 - Modify: `backend/utils/jwtutils.js` (add JTI claim — JWT ID — for tracking)
 
-- [ ] **Step 1: Add `jti` to refresh tokens**
+- [x] **Step 1: Add `jti` to refresh tokens**
 
 In `jwtutils.js`:
 ```js
@@ -706,20 +706,20 @@ export const generateRefreshToken = (userId) => {
 };
 ```
 
-- [ ] **Step 2: Update User model**
+- [x] **Step 2: Update User model**
 
 In `Usermodel.js`, add a `refreshTokenJti` field:
 ```js
 refreshTokenJti: { type: String, select: false }
 ```
 
-- [ ] **Step 3: Update login + refresh in `authController.js`**
+- [x] **Step 3: Update login + refresh in `authController.js`**
 
 On login: generate token, store `jti` on user.
 
 On refresh: verify token, **check `jti` matches `user.refreshTokenJti`**. If yes → rotate (issue new pair, store new jti). If no → token replay detected → clear `user.refreshTokenJti` (force re-login) and return 401.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 # 1. login → get refresh1
@@ -728,7 +728,7 @@ On refresh: verify token, **check `jti` matches `user.refreshTokenJti`**. If yes
 # 4. POST /refresh with refresh2 → 401 (because jti was cleared in step 3 — desired security behavior)
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -m "feat(auth): single-use refresh tokens with jti rotation; replay detection"
@@ -752,11 +752,11 @@ git commit -m "feat(auth): single-use refresh tokens with jti rotation; replay d
 - Modify: `frontend/src/utils/api.js` (add `withCredentials: true`, attach CSRF header)
 - Modify: `frontend/src/stores/authStore.js` (no longer stores tokens — tracks `isAuthenticated` + user only)
 
-- [ ] **Step 1-N:** (detailed steps to be expanded — this task is the largest in Phase 2 and deserves a focused session)
+- [x] **Step 1-N:** (detailed steps to be expanded — this task is the largest in Phase 2 and deserves a focused session)
 
 > **For brevity, this task is sketched here.** When you're ready to execute, ask Claude to expand it into the same task-by-task format as Tasks 1-6. Approximate effort: 3-4 hours.
 
-- [ ] **Final commit**
+- [x] **Final commit**
 
 ```bash
 git commit -m "feat(auth): move tokens to httpOnly cookies + CSRF double-submit token"
@@ -776,7 +776,7 @@ git commit -m "feat(auth): move tokens to httpOnly cookies + CSRF double-submit 
 - Modify: `backend/middleware/authMiddleware.js` (check blacklist)
 - Modify: `backend/controllers/authController.js` (push to blacklist on logout)
 
-- [ ] **Step 1: Create `backend/utils/tokenBlacklist.js`**
+- [x] **Step 1: Create `backend/utils/tokenBlacklist.js`**
 
 ```js
 // Simple in-memory map of jti → expiresAt(ms). Cleared on process restart.
@@ -804,7 +804,7 @@ setInterval(() => {
 }, 60_000);
 ```
 
-- [ ] **Step 2: Add jti to access tokens**
+- [x] **Step 2: Add jti to access tokens**
 
 ```js
 export const generateAccessToken = (userId) => {
@@ -816,7 +816,7 @@ export const generateAccessToken = (userId) => {
 };
 ```
 
-- [ ] **Step 3: Check blacklist in authMiddleware**
+- [x] **Step 3: Check blacklist in authMiddleware**
 
 After verifying the token, before setting `req.user`:
 ```js
@@ -827,7 +827,7 @@ if (isRevoked(decoded.jti)) {
 }
 ```
 
-- [ ] **Step 4: Push to blacklist on logout**
+- [x] **Step 4: Push to blacklist on logout**
 
 In `logout` controller:
 ```js
@@ -840,7 +840,7 @@ if (decoded?.jti && decoded?.exp) {
 // ... clear cookies, clear refreshTokenJti, etc.
 ```
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 ```bash
 # Login → get token
@@ -849,7 +849,7 @@ if (decoded?.jti && decoded?.exp) {
 # Use same token to access /api/auth/me → 401 UNAUTHORIZED ('Token has been revoked')
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "feat(auth): in-memory access-token blacklist on logout (Redis-backed in Phase 3)"
@@ -859,14 +859,14 @@ git commit -m "feat(auth): in-memory access-token blacklist on logout (Redis-bac
 
 ## End-of-phase verification
 
-- [ ] All controllers free of `try/catch` boilerplate (except intentional fallbacks).
-- [ ] All routes wrapped in `validate({ body: ... })` where they accept input.
-- [ ] `curl -i .../api/health` returns `X-Request-ID` header.
-- [ ] Bad input → 400 with `{success: false, code: 'VALIDATION_ERROR', message, requestId}` shape.
-- [ ] Hit login 6 times in 15min → 6th returns 429 RATE_LIMITED.
-- [ ] Re-using a refresh token returns 401 + invalidates the family.
-- [ ] After login, browser shows two httpOnly cookies (`accessToken`, `refreshToken`); localStorage is empty of tokens.
-- [ ] After logout, the previous access token is rejected.
+- [x] All controllers free of `try/catch` boilerplate (except intentional fallbacks).
+- [x] All routes wrapped in `validate({ body: ... })` where they accept input.
+- [x] `curl -i .../api/health` returns `X-Request-ID` header.
+- [x] Bad input → 400 with `{success: false, code: 'VALIDATION_ERROR', message, requestId}` shape.
+- [x] Hit login 6 times in 15min → 6th returns 429 RATE_LIMITED.
+- [x] Re-using a refresh token returns 401 + invalidates the family.
+- [x] After login, browser shows two httpOnly cookies (`accessToken`, `refreshToken`); localStorage is empty of tokens.
+- [x] After logout, the previous access token is rejected.
 - [ ] All tests pass on prod after deploy (Render auto-redeploys on push).
 
 ## What's next — Phase 3
