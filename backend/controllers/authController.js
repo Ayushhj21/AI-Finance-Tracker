@@ -3,6 +3,7 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '.
 import { setAuthCookies, clearAuthCookies, generateCsrfToken } from '../utils/cookies.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { Unauthorized, Conflict } from '../utils/errors.js';
+import { revoke } from '../utils/tokenBlacklist.js';
 
 // @desc Register a new user
 // @route POST /api/auth/register
@@ -20,7 +21,7 @@ export const register = asyncHandler(async (req, res) => {
         currency: currency || 'USD'
     });
 
-    const accessToken = generateAccessToken(user._id);
+    const { token: accessToken } = generateAccessToken(user._id);
     const { token: refreshToken, jti } = generateRefreshToken(user._id);
     const csrfToken = generateCsrfToken();
     user.refreshTokenJti = jti;
@@ -54,7 +55,7 @@ export const login = asyncHandler(async (req, res) => {
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) throw Unauthorized('Invalid email or password');
 
-    const accessToken = generateAccessToken(user._id);
+    const { token: accessToken } = generateAccessToken(user._id);
     const { token: refreshToken, jti } = generateRefreshToken(user._id);
     const csrfToken = generateCsrfToken();
     user.refreshTokenJti = jti;
@@ -104,7 +105,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
 
     // Rotate: issue a fresh pair and store the new jti. Also rotate the CSRF token
     // so a long-lived session doesn't keep the same one forever.
-    const newAccessToken = generateAccessToken(user._id);
+    const { token: newAccessToken } = generateAccessToken(user._id);
     const { token: newRefreshToken, jti: newJti } = generateRefreshToken(user._id);
     const newCsrfToken = generateCsrfToken();
     user.refreshTokenJti = newJti;
@@ -126,6 +127,13 @@ export const logout = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
     user.refreshTokenJti = null;
     await user.save();
+
+    // Revoke the access token so it stops working immediately instead of
+    // remaining valid until its 15-minute expiry. jti/exp were stashed by
+    // authMiddleware after it verified the cookie.
+    if (req.tokenJti && req.tokenExp) {
+        revoke(req.tokenJti, req.tokenExp * 1000);
+    }
 
     clearAuthCookies(res);
 

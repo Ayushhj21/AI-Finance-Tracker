@@ -1,12 +1,17 @@
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 
+// Access tokens carry a jti so logout can push them onto an in-memory blacklist
+// (see utils/tokenBlacklist.js). Without a jti there's no way to invalidate a
+// stateless JWT before its natural expiry.
 export const generateAccessToken = (userId) => {
-    return jwt.sign(
-        { userId },
+    const jti = randomUUID();
+    const token = jwt.sign(
+        { userId, jti },
         process.env.JWT_ACCESS_SECRET,
         { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '15m' }
     );
+    return { token, jti };
 };
 
 // Refresh tokens carry a unique jti (JWT ID). The server stores ONLY the jti
