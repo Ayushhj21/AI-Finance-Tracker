@@ -15,8 +15,8 @@ const Layout = ({ children }) => {//this will be the main layout of the applicat
   const { unreadCount } = useNotificationStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
