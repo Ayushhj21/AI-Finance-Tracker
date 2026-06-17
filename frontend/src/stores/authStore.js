@@ -9,9 +9,18 @@ export const useAuthStore = create(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
+      // csrfToken is delivered in the response body of login/register/refresh/me
+      // because the cross-site cookie set by the backend (Render) isn't readable
+      // by JS on the frontend origin (Vercel). The axios request interceptor
+      // pulls it from here and attaches it as X-CSRF-Token.
+      csrfToken: null,
 
       setAuth: (user) => {
         set({ user, isAuthenticated: true });
+      },
+
+      setCsrfToken: (csrfToken) => {
+        set({ csrfToken });
       },
 
       updateUser: (userData) => {
@@ -28,7 +37,7 @@ export const useAuthStore = create(
         } catch (e) {
           // intentionally ignored
         }
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, csrfToken: null });
         localStorage.clear();
       },
 
@@ -38,7 +47,8 @@ export const useAuthStore = create(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated
+        isAuthenticated: state.isAuthenticated,
+        csrfToken: state.csrfToken
       })
     }
   )

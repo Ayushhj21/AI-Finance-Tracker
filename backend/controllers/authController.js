@@ -1,6 +1,6 @@
 import User from '../models/Usermodel.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwtutils.js';
-import { setAuthCookies, clearAuthCookies, generateCsrfToken } from '../utils/cookies.js';
+import { setAuthCookies, setCsrfCookie, clearAuthCookies, generateCsrfToken } from '../utils/cookies.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { Unauthorized, Conflict } from '../utils/errors.js';
 import { revoke } from '../utils/tokenBlacklist.js';
@@ -32,6 +32,12 @@ export const register = asyncHandler(async (req, res) => {
     res.status(201).json({
         success: true,
         message: 'User registered successfully',
+        // csrfToken is returned in the body too because JS on a cross-site frontend
+        // (Vercel) can't read the cookie set by the backend (Render) — the cookie
+        // lives in the backend origin's jar. The browser still sends the cookie
+        // back to us with credentials; the body delivery is just so the frontend
+        // can echo it in the X-CSRF-Token header.
+        csrfToken,
         data: {
             user: {
                 id: user._id,
@@ -66,6 +72,7 @@ export const login = asyncHandler(async (req, res) => {
     res.json({
         success: true,
         message: 'Login successful',
+        csrfToken,
         data: {
             user: {
                 id: user._id,
@@ -117,7 +124,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
         csrfToken: newCsrfToken
     });
 
-    res.json({ success: true });
+    res.json({ success: true, csrfToken: newCsrfToken });
 });
 
 // @desc    Logout user
@@ -149,8 +156,19 @@ export const logout = asyncHandler(async (req, res) => {
 export const getCurrentUser = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
 
+    // Re-emit the csrf token so the frontend can recover after a page reload
+    // (its in-memory copy was lost). If the cookie still exists, echo that exact
+    // value so the cookie/header pair the middleware compares is consistent;
+    // otherwise mint a new one and refresh the cookie.
+    let csrfToken = req.cookies?.csrfToken;
+    if (!csrfToken) {
+        csrfToken = generateCsrfToken();
+        setCsrfCookie(res, csrfToken);
+    }
+
     res.json({
         success: true,
+        csrfToken,
         data: {
             id: user._id,
             name: user.name,

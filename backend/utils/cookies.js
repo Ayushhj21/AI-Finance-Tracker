@@ -39,6 +39,12 @@ export const setAuthCookies = (res, { accessToken, refreshToken, csrfToken }) =>
         path: '/api/auth/refresh',
         maxAge: REFRESH_TOKEN_MAX_AGE
     });
+    setCsrfCookie(res, csrfToken);
+};
+
+// Used by /me when recovering after a page reload: if the csrf cookie was lost,
+// we re-mint and re-set it without rotating the auth cookies.
+export const setCsrfCookie = (res, csrfToken) => {
     res.cookie('csrfToken', csrfToken, {
         ...csrfBase(),
         maxAge: CSRF_MAX_AGE

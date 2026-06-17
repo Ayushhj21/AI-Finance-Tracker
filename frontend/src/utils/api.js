@@ -1,15 +1,16 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
-// Auth tokens now live in httpOnly cookies the server sets on login/register/refresh.
-// We never touch them from JS. Three things changed vs the previous Bearer-token flow:
+// Auth tokens live in httpOnly cookies the server sets on login/register/refresh.
+// We never touch them from JS. Notes on the cross-site setup (Vercel <-> Render):
 //   1. withCredentials: true — tells axios to send/receive cookies cross-origin.
-//   2. We no longer attach Authorization headers; the browser sends accessToken
-//      automatically on every API request and refreshToken only on /auth/refresh.
-//   3. On state-changing methods we attach X-CSRF-Token, read from the non-httpOnly
-//      csrfToken cookie. This is the "double-submit" defense — a cross-site
-//      attacker can fire requests but can't read our csrf cookie, so they can't
-//      construct the matching header.
+//   2. No Authorization header — the browser sends accessToken automatically and
+//      refreshToken only on /auth/refresh (path-scoped cookie).
+//   3. CSRF token is delivered to JS via the response body (login/register/
+//      refresh/me return it), NOT read from document.cookie. The csrf cookie
+//      is owned by the backend origin (Render), so JS on the Vercel origin
+//      can't see it. The cookie still flows back to the backend on requests
+//      (withCredentials), so the server-side double-submit check works.
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
@@ -18,14 +19,9 @@ const api = axios.create({
 
 const STATE_CHANGING_METHODS = new Set(['post', 'put', 'patch', 'delete']);
 
-const readCsrfCookie = () => {
-  const match = document.cookie.match(/(?:^|;\s*)csrfToken=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
-};
-
 api.interceptors.request.use((config) => {
   if (STATE_CHANGING_METHODS.has(config.method?.toLowerCase())) {
-    const csrf = readCsrfCookie();
+    const csrf = useAuthStore.getState().csrfToken;
     if (csrf) config.headers['X-CSRF-Token'] = csrf;
   }
   return config;
@@ -35,8 +31,18 @@ api.interceptors.request.use((config) => {
 // request races to /auth/refresh and rotation invalidates all but the first.
 let refreshPromise = null;
 
+// Any auth response that ships a fresh csrfToken (login/register/refresh/me)
+// updates the store so subsequent state-changing requests can echo it.
+const syncCsrf = (response) => {
+  const token = response?.data?.csrfToken;
+  if (token) useAuthStore.getState().setCsrfToken(token);
+};
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    syncCsrf(response);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
@@ -52,12 +58,13 @@ api.interceptors.response.use(
       try {
         refreshPromise ??= axios
           .post(`${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`, {}, { withCredentials: true })
+          .then((res) => { syncCsrf(res); return res; })
           .finally(() => { refreshPromise = null; });
 
         await refreshPromise;
-        // Server rotated cookies including csrfToken; re-read it for the retried request.
+        // Server rotated csrf; re-read from the store (just populated above).
         if (STATE_CHANGING_METHODS.has(originalRequest.method?.toLowerCase())) {
-          const csrf = readCsrfCookie();
+          const csrf = useAuthStore.getState().csrfToken;
           if (csrf) originalRequest.headers['X-CSRF-Token'] = csrf;
         }
         return api(originalRequest);
