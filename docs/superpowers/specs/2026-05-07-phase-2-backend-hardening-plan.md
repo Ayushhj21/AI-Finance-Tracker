@@ -867,7 +867,7 @@ git commit -m "feat(auth): in-memory access-token blacklist on logout (Redis-bac
 - [x] Re-using a refresh token returns 401 + invalidates the family.
 - [x] After login, browser shows two httpOnly cookies (`accessToken`, `refreshToken`); localStorage is empty of tokens.
 - [x] After logout, the previous access token is rejected.
-- [ ] All tests pass on prod after deploy (Render auto-redeploys on push).
+- [x] All tests pass on prod after deploy (Render auto-redeploys on push).
 
 ## What's next — Phase 3
 
